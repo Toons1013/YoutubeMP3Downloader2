@@ -105,88 +105,78 @@ namespace YoutubeMp3Downloader
             return SanitizeFileName(title);
         }
 
-        static async Task DownloadWithYtDlpAsync(string url, string outputFilePath, string ytDlpPath)
+        static async Task DownloadWithYtDlpAsync(string url, string folder, string ytDlpPath)
+{
+    try
+    {
+        ProcessStartInfo psi = new ProcessStartInfo
         {
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = ytDlpPath,
-                    Arguments = $"-x --audio-format mp3 -o \"{outputFilePath}\" {url}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+            FileName = ytDlpPath,
+            Arguments = $"-x --audio-format mp3 -o \"{folder}\\%(title)s.%(ext)s\" {url}",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-                using (Process process = new Process { StartInfo = psi })
-                {
-                    process.Start();
-                    Console.WriteLine("📡 Downloading...");
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    string error = await process.StandardError.ReadToEndAsync();
-                    process.WaitForExit();
+        using (Process process = new Process { StartInfo = psi })
+        {
+            process.Start();
+            Console.WriteLine("📡 Downloading...");
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
 
-                    Console.WriteLine(output);
-                    if (!string.IsNullOrWhiteSpace(error))
-                        Console.WriteLine($"⚠️ yt-dlp Warning/Error: {error}");
+            Console.WriteLine(output);
+            if (!string.IsNullOrWhiteSpace(error))
+                Console.WriteLine($"⚠️ yt-dlp Warning/Error: {error}");
 
-                    Console.WriteLine($"✅ Download complete: {outputFilePath}\n");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error downloading: {ex.Message}");
-            }
+            Console.WriteLine($"✅ Download complete!\n");
         }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error downloading: {ex.Message}");
+    }
+}
+
 
         static async Task DownloadPlaylistWithYtDlpAsync(string url, string folder, string ytDlpPath)
+{
+    try
+    {
+        ProcessStartInfo psi = new ProcessStartInfo
         {
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = ytDlpPath,
-                    Arguments = $"--print-to-file \"%(playlist_index)s - %(title)s\" \"{folder}\\playlist_songs.txt\" {url}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+            FileName = ytDlpPath,
+            Arguments = $"--yes-playlist -x --audio-format mp3 -o \"{folder}\\%(playlist_title)s\\%(title)s.%(ext)s\" {url}",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-                using (Process process = new Process { StartInfo = psi })
-                {
-                    process.Start();
-                    await process.StandardOutput.ReadToEndAsync();
-                    await process.StandardError.ReadToEndAsync();
-                    process.WaitForExit();
-                }
+        using (Process process = new Process { StartInfo = psi })
+        {
+            process.Start();
+            Console.WriteLine($"📂 Downloading playlist: {url}");
 
-                string playlistFile = Path.Combine(folder, "playlist_songs.txt");
-                if (!File.Exists(playlistFile))
-                {
-                    Console.WriteLine($"❌ Error: Could not fetch playlist song names.");
-                    return;
-                }
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
 
-                string[] songs = File.ReadAllLines(playlistFile);
-                File.Delete(playlistFile); // Cleanup the temporary file
+            Console.WriteLine(output);
+            if (!string.IsNullOrWhiteSpace(error))
+                Console.WriteLine($"⚠️ yt-dlp Warning/Error: {error}");
 
-                for (int i = 0; i < songs.Length; i++)
-                {
-                    string songTitle = SanitizeFileName(songs[i]);
-                    string outputFilePath = Path.Combine(folder, $"{songTitle}.mp3");
-
-                    Console.WriteLine($"🎵 Downloading song {i + 1}/{songs.Length}: {songTitle}...");
-                    await DownloadWithYtDlpAsync($"{url} --playlist-items {i + 1}", outputFilePath, ytDlpPath);
-                    Console.WriteLine($"✅ Downloaded song {i + 1}/{songs.Length}: {songTitle}!\n");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error downloading playlist: {ex.Message}");
-            }
+            Console.WriteLine($"✅ Playlist download complete!\n");
         }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error downloading playlist: {ex.Message}");
+    }
+}
+
 
         static string SanitizeFileName(string fileName)
         {
